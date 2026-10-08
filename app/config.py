@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,8 +8,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "postgresql+psycopg://expense:expense@localhost:5432/expense"
-    secret_key: str = "change-me"
+    # HS256 needs at least 32 bytes of key. The default is for local development only.
+    secret_key: str = Field(default="dev-only-insecure-secret-key-change-me", min_length=32)
     access_token_expire_minutes: int = 60 * 24
+    # Set to true in production so the auth cookie is only sent over HTTPS.
+    cookie_secure: bool = False
 
     @field_validator("database_url")
     @classmethod

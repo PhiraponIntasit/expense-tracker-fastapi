@@ -19,7 +19,7 @@ services:
     build: .
     environment:
       DATABASE_URL: postgresql+psycopg://expense:expense@db:5432/expense
-      SECRET_KEY: dev-only-secret-change-me
+      SECRET_KEY: dev-only-insecure-secret-key-change-me
     ports:
       - "8000:8000"
     depends_on:

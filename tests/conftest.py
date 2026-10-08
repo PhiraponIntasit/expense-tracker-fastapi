@@ -62,3 +62,21 @@ def client(db: Session) -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = lambda: db
     with TestClient(app) as test_client:
         yield test_client
+
+
+PASSWORD = "correct-horse-battery"
+
+
+def register(client: TestClient, email: str, password: str = PASSWORD) -> dict[str, object]:
+    response = client.post("/api/auth/register", json={"email": email, "password": password})
+    assert response.status_code == 201, response.text
+    body: dict[str, object] = response.json()
+    return body
+
+
+def bearer_headers(client: TestClient, email: str, password: str = PASSWORD) -> dict[str, str]:
+    """Log in and return an Authorization header, leaving no auth cookie behind."""
+    response = client.post("/api/auth/token", data={"username": email, "password": password})
+    assert response.status_code == 200, response.text
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
