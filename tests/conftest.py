@@ -1,6 +1,7 @@
 import os
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -103,3 +104,14 @@ def alice(client: TestClient) -> AuthedUser:
 @pytest.fixture
 def bob(client: TestClient) -> AuthedUser:
     return make_user(client, "bob@example.com")
+
+
+def create_category(
+    client: TestClient, user: AuthedUser, name: str, type: str = "expense"
+) -> dict[str, Any]:
+    response = client.post(
+        "/api/categories", json={"name": name, "type": type}, headers=user.headers
+    )
+    assert response.status_code == 201, response.text
+    body: dict[str, Any] = response.json()
+    return body

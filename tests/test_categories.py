@@ -9,18 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.defaults import DEFAULT_CATEGORIES
 from app.models import Category, CategoryType, Transaction, User
-from tests.conftest import AuthedUser
-
-
-def create_category(
-    client: TestClient, user: AuthedUser, name: str, type: str = "expense"
-) -> dict[str, object]:
-    response = client.post(
-        "/api/categories", json={"name": name, "type": type}, headers=user.headers
-    )
-    assert response.status_code == 201, response.text
-    body: dict[str, object] = response.json()
-    return body
+from tests.conftest import AuthedUser, create_category
 
 
 def add_transaction(db: Session, user: AuthedUser, category_id: object) -> None:

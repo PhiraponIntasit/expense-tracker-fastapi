@@ -96,12 +96,28 @@ PATCH  /api/categories/{id}             409 if retyping while in use
 DELETE /api/categories/{id}          409 if in use
 
 GET    /api/transactions             ?month=YYYY-MM&type=&category_id=&limit=&offset=
-                                     → {items, total, sum}
-POST   /api/transactions
-GET    /api/transactions/{id}
-PATCH  /api/transactions/{id}
+                                     → {items, total, income, expense}
+                                       (totals cover every page, not just this one)
+POST   /api/transactions             {category_id, amount, occurred_on, note?}
+GET    /api/transactions/{id}        → {..., category: {id, name, type}}
+PATCH  /api/transactions/{id}        note: null clears the note
 DELETE /api/transactions/{id}
-GET    /api/transactions/export.csv  same filters, streamed
+GET    /api/transactions/export.csv  same filters, no pagination
+```
+
+Amounts are JSON **strings** (`"1234.50"`) so that no client parses them as
+floats. Requests accept either strings or numbers.
+
+The list returns `income` and `expense` separately instead of a single `sum`.
+Adding the two together without a type filter would mean nothing.
+
+The CSV export starts with a UTF-8 BOM so that Excel shows Thai text
+correctly. Any cell beginning with `=`, `+`, `-` or `@` gets an apostrophe in
+front to block CSV formula injection. The export is built in memory rather
+than streamed: personal data is small, and building it in memory avoids
+reading from a DB session after the request's dependencies have closed.
+
+```
 
 GET    /api/summary/monthly          ?from=YYYY-MM&to=YYYY-MM
                                      → [{month, income, expense, net}], zero-filled

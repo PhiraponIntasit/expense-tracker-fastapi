@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, StringConstraints
@@ -51,3 +52,50 @@ class CategoryRead(BaseModel):
     id: int
     name: str
     type: CategoryType
+
+
+def _blank_to_none(value: str | None) -> str | None:
+    return value or None
+
+
+Note = Annotated[
+    str | None,
+    StringConstraints(strip_whitespace=True, max_length=200),
+    AfterValidator(_blank_to_none),
+]
+# Positive, at most 2 decimal places, up to 9,999,999,999.99 (numeric(12, 2)).
+Amount = Annotated[Decimal, Field(gt=0, max_digits=12, decimal_places=2)]
+
+
+class TransactionCreate(BaseModel):
+    category_id: int
+    amount: Amount
+    occurred_on: date
+    note: Note = None
+
+
+class TransactionUpdate(BaseModel):
+    category_id: int | None = None
+    amount: Amount | None = None
+    occurred_on: date | None = None
+    # Send null explicitly to clear the note; leave it out to keep it.
+    note: Note = None
+
+
+class TransactionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    amount: Decimal
+    occurred_on: date
+    note: str | None
+    category: CategoryRead
+    created_at: datetime
+    updated_at: datetime
+
+
+class TransactionPage(BaseModel):
+    items: list[TransactionRead]
+    total: int = Field(description="Number of transactions matching the filters")
+    income: Decimal = Field(description="Sum of income matching the filters (all pages)")
+    expense: Decimal = Field(description="Sum of expenses matching the filters (all pages)")
