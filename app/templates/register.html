@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Create account · Expense Tracker{% endblock %}
+{% block content %}
+{% with heading="Create an account", subheading="We'll set you up with a starter set of categories.", action="/register",
+        submit="Create account", footer='Already have an account? <a href="/login">Log in</a>' %}
+  {% include "_auth_form.html" %}
+{% endwith %}
+{% endblock %}

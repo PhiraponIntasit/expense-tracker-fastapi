@@ -14,15 +14,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token", auto_error=Fals
 DbSession = Annotated[Session, Depends(get_db)]
 
 
+def _user_from_token(db: Session, token: str | None) -> User | None:
+    user_id = decode_access_token(token) if token else None
+    return db.get(User, user_id) if user_id is not None else None
+
+
 def get_current_user(
     db: DbSession,
     bearer_token: Annotated[str | None, Depends(oauth2_scheme)],
     cookie_token: Annotated[str | None, Cookie(alias=ACCESS_TOKEN_COOKIE)] = None,
 ) -> User:
     # An explicit Authorization header wins over the browser cookie.
-    token = bearer_token or cookie_token
-    user_id = decode_access_token(token) if token else None
-    user = db.get(User, user_id) if user_id is not None else None
+    user = _user_from_token(db, bearer_token or cookie_token)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -33,3 +36,14 @@ def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def get_page_user(
+    db: DbSession,
+    cookie_token: Annotated[str | None, Cookie(alias=ACCESS_TOKEN_COOKIE)] = None,
+) -> User | None:
+    """The logged-in user for web pages (cookie only), or None."""
+    return _user_from_token(db, cookie_token)
+
+
+PageUser = Annotated[User | None, Depends(get_page_user)]

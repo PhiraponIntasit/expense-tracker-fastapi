@@ -133,6 +133,23 @@ at 00:30 on the 1st already sees the new month.
 Web pages (Jinja2): `/login`, `/register`, `/` (dashboard), `/transactions`,
 `/categories`.
 
+- **Rendering:** login and register are plain HTML forms that work without
+  JS. The three app pages are server-rendered shells whose ES modules load
+  data from `/api` with the same-origin cookie. Pages accept the cookie only,
+  never a bearer header. User-provided text (category names, notes) reaches the
+  DOM through `textContent` only.
+- **Hardening:** a strict CSP covers every page (scripts from `'self'` only, no
+  inline scripts). Middleware rejects any `POST`/`PUT`/`PATCH`/`DELETE` whose
+  `Origin` header names another host, as CSRF defence on top of
+  `SameSite=Lax`. Pico.css and Chart.js are vendored under `app/static/vendor`,
+  so there are no CDN dependencies.
+- **Charts:** the palette was validated for colour-vision deficiency and
+  contrast in light and dark mode. Each chart has a "Show as table" view, the
+  selected month is shaded instead of recoloured, and charts are not animated.
+- **Stat tiles:** income and expenses compare with last month as a percentage.
+  Net compares as an amount, because a percentage change is meaningless when
+  net crosses zero.
+
 ## Testing priorities
 
 1. **Isolation:** user A cannot list, read, update or delete user B's

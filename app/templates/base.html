@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}Expense Tracker{% endblock %}</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/vendor/pico.min.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="container">
+    <nav>
+      <ul>
+        <li><a href="/" class="brand"><strong>฿ Expense Tracker</strong></a></li>
+      </ul>
+      {% if user %}
+      <ul class="nav-links">
+        <li><a href="/" {% if active == "dashboard" %}aria-current="page"{% endif %}>Dashboard</a></li>
+        <li><a href="/transactions" {% if active == "transactions" %}aria-current="page"{% endif %}>Transactions</a></li>
+        <li><a href="/categories" {% if active == "categories" %}aria-current="page"{% endif %}>Categories</a></li>
+        <li>
+          <details class="dropdown">
+            <summary>Account</summary>
+            <ul dir="rtl">
+              <li><span class="muted user-email">{{ user.email }}</span></li>
+              <li>
+                <form method="post" action="/logout">
+                  <button type="submit" class="secondary outline logout">Log out</button>
+                </form>
+              </li>
+            </ul>
+          </details>
+        </li>
+      </ul>
+      {% endif %}
+    </nav>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
