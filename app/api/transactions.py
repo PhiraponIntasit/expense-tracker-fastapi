@@ -1,17 +1,17 @@
 import csv
 import io
 from collections.abc import Iterable
-from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import ColumnElement, Numeric, Select, cast, func, select
+from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.orm import contains_eager
 
 from app.api.categories import get_owned_category
 from app.deps import CurrentUser, DbSession
 from app.models import Category, CategoryType, Transaction, User
 from app.months import Month, month_bounds
+from app.queries import sum_by_type
 from app.schemas import TransactionCreate, TransactionPage, TransactionRead, TransactionUpdate
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -54,14 +54,6 @@ def _filtered_query(filters: TransactionFilters, user: User) -> Select[Transacti
     )
 
 
-def _sum_of(category_type: CategoryType) -> ColumnElement[Decimal]:
-    # Cast keeps two decimal places even when nothing matches ("0.00", not "0").
-    return cast(
-        func.coalesce(func.sum(Transaction.amount).filter(Category.type == category_type), 0),
-        Numeric(12, 2),
-    )
-
-
 def get_owned_transaction(db: DbSession, user: User, transaction_id: int) -> Transaction:
     transaction = db.scalar(
         select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == user.id)
@@ -84,8 +76,8 @@ def list_transactions(
     total, income, expense = db.execute(
         select(
             func.count(),
-            _sum_of(CategoryType.INCOME),
-            _sum_of(CategoryType.EXPENSE),
+            sum_by_type(CategoryType.INCOME),
+            sum_by_type(CategoryType.EXPENSE),
         )
         .select_from(Transaction)
         .join(Transaction.category)

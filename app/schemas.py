@@ -99,3 +99,16 @@ class TransactionPage(BaseModel):
     total: int = Field(description="Number of transactions matching the filters")
     income: Decimal = Field(description="Sum of income matching the filters (all pages)")
     expense: Decimal = Field(description="Sum of expenses matching the filters (all pages)")
+
+
+class MonthTotals(BaseModel):
+    month: str = Field(examples=["2026-10"])
+    income: Decimal
+    expense: Decimal
+    net: Decimal = Field(description="income - expense")
+
+
+class CategoryTotal(BaseModel):
+    category_id: int
+    name: str
+    total: Decimal

@@ -118,12 +118,17 @@ than streamed: personal data is small, and building it in memory avoids
 reading from a DB session after the request's dependencies have closed.
 
 ```
-
-GET    /api/summary/monthly          ?from=YYYY-MM&to=YYYY-MM
+GET    /api/summary/monthly          ?from=YYYY-MM&to=YYYY-MM  (inclusive, max 120 months)
                                      → [{month, income, expense, net}], zero-filled
 GET    /api/summary/by-category      ?month=YYYY-MM&type=expense
-                                     → [{category_id, name, total}] sorted desc
+                                     → [{category_id, name, total}] largest first,
+                                       categories with no transactions omitted
 ```
+
+If the months are left out, the summary endpoints default to the current
+month in UTC (the last 12 months for `monthly`). The web UI always sends
+explicit months computed in the browser's local time, so a user in Bangkok
+at 00:30 on the 1st already sees the new month.
 
 Web pages (Jinja2): `/login`, `/register`, `/` (dashboard), `/transactions`,
 `/categories`.
