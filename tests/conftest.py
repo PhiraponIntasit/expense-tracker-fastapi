@@ -1,5 +1,6 @@
 import os
 from collections.abc import Iterator
+from dataclasses import dataclass
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -80,3 +81,25 @@ def bearer_headers(client: TestClient, email: str, password: str = PASSWORD) -> 
     assert response.status_code == 200, response.text
     client.cookies.clear()
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+@dataclass(frozen=True)
+class AuthedUser:
+    id: int
+    headers: dict[str, str]
+
+
+def make_user(client: TestClient, email: str) -> AuthedUser:
+    user_id = register(client, email)["id"]
+    assert isinstance(user_id, int)
+    return AuthedUser(id=user_id, headers=bearer_headers(client, email))
+
+
+@pytest.fixture
+def alice(client: TestClient) -> AuthedUser:
+    return make_user(client, "alice@example.com")
+
+
+@pytest.fixture
+def bob(client: TestClient) -> AuthedUser:
+    return make_user(client, "bob@example.com")

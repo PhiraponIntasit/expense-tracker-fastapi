@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, StringConstraints
+
+from app.models import CategoryType
 
 
 def _normalize_email(value: str) -> str:
@@ -28,3 +30,24 @@ class UserRead(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
+
+
+CategoryName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50)]
+
+
+class CategoryCreate(BaseModel):
+    name: CategoryName
+    type: CategoryType
+
+
+class CategoryUpdate(BaseModel):
+    name: CategoryName | None = None
+    type: CategoryType | None = None
+
+
+class CategoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    type: CategoryType

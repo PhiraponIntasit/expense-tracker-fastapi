@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
+from app.defaults import add_default_categories
 from app.deps import DbSession
 from app.models import User
 from app.schemas import Token, UserCreate, UserRead
@@ -30,6 +31,8 @@ def register(payload: UserCreate, db: DbSession) -> UserRead:
     user = User(email=payload.email, password_hash=hash_password(payload.password))
     db.add(user)
     try:
+        db.flush()
+        add_default_categories(db, user)
         db.commit()
     except IntegrityError:  # lost a race with a concurrent registration
         db.rollback()

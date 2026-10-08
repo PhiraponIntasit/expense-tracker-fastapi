@@ -47,14 +47,16 @@ categories
   id              bigint PK
   user_id         FK users ON DELETE CASCADE
   name            varchar(50)
-  type            enum('income','expense')
+  type            varchar(10) CHECK IN ('income','expense')
   created_at      timestamptz
-  UNIQUE (user_id, type, name)
+  UNIQUE (user_id, type, lower(name))
+  UNIQUE (id, user_id)            -- target of the composite FK below
 
 transactions
   id              bigint PK
   user_id         FK users ON DELETE CASCADE
-  category_id     FK categories ON DELETE RESTRICT
+  category_id     ┐ composite FK (category_id, user_id)
+                  ┘   → categories (id, user_id)
   amount          numeric(12,2) CHECK (amount > 0)
   occurred_on     date
   note            varchar(200) null
@@ -68,7 +70,11 @@ A transaction's type is always its category's type. To keep that consistent:
 - Deleting a category that still has transactions returns **409**. The user
   has to move those transactions to another category first.
 - Changing a category's `type` while it has transactions also returns **409**.
-- A transaction may only reference a category owned by the same user.
+- A transaction may only reference a category owned by the same user. The
+  composite foreign key enforces this in the database itself, not just in the
+  API. It uses `NO ACTION` rather than `RESTRICT` so that deleting a user
+  (for example, purging a demo account) can cascade through both tables in
+  one statement.
 
 ## API sketch
 
@@ -85,7 +91,8 @@ GET    /api/users/me
 
 GET    /api/categories               ?type=
 POST   /api/categories
-PATCH  /api/categories/{id}
+GET    /api/categories/{id}
+PATCH  /api/categories/{id}             409 if retyping while in use
 DELETE /api/categories/{id}          409 if in use
 
 GET    /api/transactions             ?month=YYYY-MM&type=&category_id=&limit=&offset=
@@ -121,8 +128,9 @@ Web pages (Jinja2): `/login`, `/register`, `/` (dashboard), `/transactions`,
    Docker Compose, Dockerfile, ruff/mypy, pytest with a transactional Postgres
    fixture, CI, and a `/healthz` endpoint that checks the database.
 2. **Users & auth:** user model, register, token/cookie login, logout, `me`.
-3. **Categories:** CRUD with default seeding and the in-use rules.
-4. **Transactions:** CRUD, filters, pagination, sum, and CSV export.
+3. **Categories:** CRUD with default seeding and the in-use rules. The
+   transactions table is created here too, since those rules depend on it.
+4. **Transactions:** API for CRUD, filters, pagination, sum, and CSV export.
 5. **Summary:** monthly and by-category endpoints.
 6. **Web UI:** Jinja2 + Pico.css pages and the Chart.js dashboard.
 7. **Demo:** sample data generator, demo endpoint, purge, `make seed`.
