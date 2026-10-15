@@ -148,3 +148,7 @@ alembic/          migrations
 tests/            integration tests against real Postgres (rolled back per test)
 docs/DESIGN.md    design decisions
 ```
+
+## License
+
+[MIT](LICENSE)

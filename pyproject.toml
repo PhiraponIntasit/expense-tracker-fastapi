@@ -3,6 +3,7 @@ name = "expense-tracker"
 version = "0.1.0"
 description = "Multi-user income/expense tracker with a monthly summary dashboard, built with FastAPI and PostgreSQL."
 requires-python = ">=3.13"
+license = "MIT"
 dependencies = [
     "alembic>=1.20.0",
     "fastapi[standard]>=0.143.0",

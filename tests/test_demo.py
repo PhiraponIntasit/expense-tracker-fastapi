@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.defaults import DEFAULT_CATEGORIES
 from app.demo import purge_expired_demo_users
 from app.models import CategoryType, Transaction, User
+from app.months import add_months, current_month
 from app.sample_data import sample_transactions
 from app.security import ACCESS_TOKEN_COOKIE
 from tests.conftest import register
@@ -162,7 +163,8 @@ def test_demo_form_logs_in_and_shows_demo_banner(client: TestClient) -> None:
     response = client.post("/demo", follow_redirects=False)
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/"
+    last_month = add_months(current_month(), -1)
+    assert response.headers["location"] == f"/?month={last_month:%Y-%m}"
     assert "demo account" in client.get("/").text
 
 

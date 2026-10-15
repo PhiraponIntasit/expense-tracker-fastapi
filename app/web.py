@@ -19,6 +19,7 @@ from app.api.auth import DEMO_BUSY
 from app.demo import DemoCapacityError, create_demo_user
 from app.deps import DbSession, PageUser
 from app.models import User
+from app.months import add_months, current_month
 from app.schemas import UserCreate
 
 router = APIRouter(include_in_schema=False)
@@ -137,7 +138,10 @@ def demo_submit(request: Request, db: DbSession) -> Response:
         return render(
             request, "login.html", {"error": DEMO_BUSY}, status.HTTP_503_SERVICE_UNAVAILABLE
         )
-    response = redirect("/")
+    # Open on last month: the current one is only partly over (salary lands
+    # on the 25th), so it would greet visitors with zero income.
+    last_month = add_months(current_month(), -1)
+    response = redirect(f"/?month={last_month:%Y-%m}")
     set_auth_cookie(response, user)
     return response
 
