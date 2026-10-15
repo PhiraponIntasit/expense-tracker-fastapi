@@ -1,15 +1,19 @@
 from functools import lru_cache
+from typing import Literal, Self
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEV_SECRET_KEY = "dev-only-insecure-secret-key-change-me"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    environment: Literal["development", "production"] = "development"
     database_url: str = "postgresql+psycopg://expense:expense@localhost:5432/expense"
     # HS256 needs at least 32 bytes of key. The default is for local development only.
-    secret_key: str = Field(default="dev-only-insecure-secret-key-change-me", min_length=32)
+    secret_key: str = Field(default=DEV_SECRET_KEY, min_length=32)
     access_token_expire_minutes: int = 60 * 24
     # Set to true in production so the auth cookie is only sent over HTTPS.
     cookie_secure: bool = False
@@ -27,6 +31,17 @@ class Settings(BaseSettings):
             if value.startswith(prefix):
                 return "postgresql+psycopg://" + value.removeprefix(prefix)
         return value
+
+    @model_validator(mode="after")
+    def production_is_locked_down(self) -> Self:
+        # Fail at startup rather than run production with a guessable token key
+        # or an auth cookie that could travel over plain HTTP.
+        if self.environment == "production":
+            if self.secret_key == DEV_SECRET_KEY:
+                raise ValueError("SECRET_KEY must be set in production")
+            if not self.cookie_secure:
+                raise ValueError("COOKIE_SECURE must be true in production")
+        return self
 
 
 @lru_cache
