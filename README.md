@@ -21,6 +21,7 @@ Requires [uv](https://docs.astral.sh/uv/) and Docker (for Postgres).
 ```bash
 make db      # start Postgres on localhost:5432
 make dev     # apply migrations and run with auto-reload
+make seed    # create demo@example.com / demo-password with a year of sample data
 make test    # run the test suite (creates the expense_test database if needed)
 make lint    # ruff + mypy
 ```

@@ -15,6 +15,8 @@ from app.accounts import (
     register_user,
     set_auth_cookie,
 )
+from app.api.auth import DEMO_BUSY
+from app.demo import DemoCapacityError, create_demo_user
 from app.deps import DbSession, PageUser
 from app.models import User
 from app.schemas import UserCreate
@@ -58,9 +60,14 @@ def page(request: Request, user: User | None, name: str, active: str) -> Respons
 # --- authentication pages --------------------------------------------------------
 
 
+def has_real_account(user: User | None) -> bool:
+    # Demo users may still open the login and register pages to switch accounts.
+    return user is not None and not user.is_demo
+
+
 @router.get("/login")
 def login_page(request: Request, user: PageUser) -> Response:
-    if user is not None:
+    if has_real_account(user):
         return redirect("/")
     return render(request, "login.html")
 
@@ -87,7 +94,7 @@ def login_submit(
 
 @router.get("/register")
 def register_page(request: Request, user: PageUser) -> Response:
-    if user is not None:
+    if has_real_account(user):
         return redirect("/")
     return render(request, "register.html")
 
@@ -117,6 +124,19 @@ def register_submit(
     except EmailTakenError:
         return form_error("An account with this email already exists.", status.HTTP_409_CONFLICT)
 
+    response = redirect("/")
+    set_auth_cookie(response, user)
+    return response
+
+
+@router.post("/demo")
+def demo_submit(request: Request, db: DbSession) -> Response:
+    try:
+        user = create_demo_user(db)
+    except DemoCapacityError:
+        return render(
+            request, "login.html", {"error": DEMO_BUSY}, status.HTTP_503_SERVICE_UNAVAILABLE
+        )
     response = redirect("/")
     set_auth_cookie(response, user)
     return response

@@ -314,3 +314,18 @@ dialog article {
   width: auto;
   margin: 0;
 }
+
+/* --- demo -------------------------------------------------------------------- */
+.demo-card {
+  text-align: center;
+}
+.demo-card form {
+  margin: 0.5rem 0;
+}
+.demo-banner {
+  padding: 0.75rem 1rem;
+  border-radius: var(--pico-border-radius);
+  background: var(--pico-card-sectioning-background-color);
+  border: 1px solid var(--pico-muted-border-color);
+  font-size: 0.9375rem;
+}

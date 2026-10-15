@@ -86,7 +86,7 @@ the row exists.
 POST   /api/auth/register            create account (+ default categories)
 POST   /api/auth/token               OAuth2 password form → bearer token, also sets cookie
 POST   /api/auth/logout              clear cookie
-POST   /api/auth/demo                create temporary demo account, set cookie
+POST   /api/auth/demo                create temporary demo account, set cookie (503 when full)
 GET    /api/users/me
 
 GET    /api/categories               ?type=
@@ -129,6 +129,30 @@ If the months are left out, the summary endpoints default to the current
 month in UTC (the last 12 months for `monthly`). The web UI always sends
 explicit months computed in the browser's local time, so a user in Bangkok
 at 00:30 on the 1st already sees the new month.
+
+### Demo accounts
+
+`POST /api/auth/demo`, or the "Try the demo" button that posts to `/demo`,
+creates a separate account for each visitor:
+
+- **Data:** default categories plus about 1,000 generated transactions
+  covering the 12 months up to today (`app/sample_data.py`, deterministic per
+  seed). They follow a Bangkok office worker's rhythm: rent on the 1st,
+  salary on the 25th, a hot-season electricity spike, a Songkran trip, and
+  more shopping around 11.11 and year-end.
+- **Login:** the account's password is random and never shown, so the only
+  way in is the cookie set when the account is created.
+- **Expiry:** accounts older than `DEMO_MAX_AGE_HOURS` (24) are deleted, and
+  their data cascades with them. This runs at app startup and every time a new
+  demo account is created, because free hosting has no cron.
+- **Cap:** at most `DEMO_MAX_USERS` (500) demo accounts can exist at once.
+  Past that the endpoint returns 503 instead of letting the database grow
+  without bound.
+- **Banner:** demo users see a notice explaining the account is temporary,
+  and can still open the register page to create a real account.
+
+`make seed` uses the same generator to create a normal
+`demo@example.com` / `demo-password` account for local development.
 
 Web pages (Jinja2): `/login`, `/register`, `/` (dashboard), `/transactions`,
 `/categories`.

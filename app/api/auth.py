@@ -10,6 +10,7 @@ from app.accounts import (
     register_user,
     set_auth_cookie,
 )
+from app.demo import DemoCapacityError, create_demo_user
 from app.deps import DbSession
 from app.schemas import Token, UserCreate, UserRead
 
@@ -46,6 +47,23 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return Token(access_token=set_auth_cookie(response, user))
+
+
+DEMO_BUSY = "The demo is busy right now. Please try again later or create an account."
+
+
+@router.post("/demo", status_code=status.HTTP_201_CREATED)
+def start_demo(db: DbSession, response: Response) -> UserRead:
+    """Create a temporary account with a year of sample data and log in as it.
+
+    Demo accounts are deleted automatically after 24 hours.
+    """
+    try:
+        user = create_demo_user(db)
+    except DemoCapacityError:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, DEMO_BUSY) from None
+    set_auth_cookie(response, user)
+    return UserRead.model_validate(user)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

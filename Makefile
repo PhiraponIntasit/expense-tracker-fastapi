@@ -1,4 +1,4 @@
-.PHONY: db dev test lint fmt migrate revision
+.PHONY: db dev test lint fmt migrate revision seed
 
 db:  ## Start only Postgres (for local development and tests)
 	docker compose up -d db
@@ -24,3 +24,6 @@ migrate:
 
 revision:  ## Usage: make revision m="add users table"
 	uv run alembic revision --autogenerate -m "$(m)"
+
+seed:  ## Create demo@example.com / demo-password with a year of sample data
+	uv run python -m app.seed

@@ -1,4 +1,6 @@
-from collections.abc import Awaitable, Callable
+import logging
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -8,6 +10,10 @@ from fastapi.staticfiles import StaticFiles
 
 from app import web
 from app.api import api_router, health
+from app.db import SessionLocal
+from app.demo import purge_expired_demo_users
+
+logger = logging.getLogger(__name__)
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -30,11 +36,26 @@ async def reject_cross_origin_writes(
     return await call_next(request)
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    # Free hosting has no cron, so expired demo accounts are also purged on
+    # startup (and every time a new demo account is created).
+    try:
+        with SessionLocal() as db:
+            purged = purge_expired_demo_users(db)
+        if purged:
+            logger.info("Purged %d expired demo accounts", purged)
+    except Exception:  # never block startup on housekeeping
+        logger.exception("Could not purge expired demo accounts")
+    yield
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Expense Tracker",
         summary="Track income and expenses, with monthly summaries.",
         version="0.1.0",
+        lifespan=lifespan,
     )
     app.middleware("http")(reject_cross_origin_writes)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")

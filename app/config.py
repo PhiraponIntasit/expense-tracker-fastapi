@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24
     # Set to true in production so the auth cookie is only sent over HTTPS.
     cookie_secure: bool = False
+    # Demo accounts are deleted after this many hours, and at most this many
+    # can exist at once (each holds about a year of sample transactions).
+    demo_max_age_hours: int = 24
+    demo_max_users: int = 500
 
     @field_validator("database_url")
     @classmethod
