@@ -7,9 +7,12 @@
 {% endwith %}
 <article class="auth-card demo-card">
   <p><strong>Just looking?</strong> Try it with a year of sample data. No sign-up needed.</p>
-  <form method="post" action="/demo">
+  <form method="post" action="/demo" id="demo-form">
     <button type="submit" class="secondary">Try the demo</button>
   </form>
   <small class="muted">You get a private demo account that is deleted after 24 hours.</small>
 </article>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/login.js"></script>
 {% endblock %}

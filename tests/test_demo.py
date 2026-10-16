@@ -4,12 +4,12 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select, text, update
+from sqlalchemy import event, func, select, text, update
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.defaults import DEFAULT_CATEGORIES
-from app.demo import purge_expired_demo_users
+from app.demo import create_demo_user, purge_expired_demo_users
 from app.models import CategoryType, Transaction, User
 from app.months import add_months, current_month
 from app.sample_data import sample_transactions
@@ -179,3 +179,21 @@ def test_regular_users_see_no_demo_banner(client: TestClient) -> None:
     client.post("/login", data={"email": "alice@example.com", "password": "correct-horse-battery"})
 
     assert "demo account" not in client.get("/").text
+
+
+def test_demo_creation_uses_a_handful_of_statements(db: Session) -> None:
+    # Each statement is a network round trip to the database. Inserting the
+    # sample rows one group at a time once made the demo take seconds.
+    statements: list[str] = []
+
+    def record(_conn: object, _cursor: object, statement: str, *_args: object) -> None:
+        statements.append(statement)
+
+    connection = db.connection()
+    event.listen(connection, "before_cursor_execute", record)
+    try:
+        create_demo_user(db)
+    finally:
+        event.remove(connection, "before_cursor_execute", record)
+
+    assert len(statements) <= 10, statements
