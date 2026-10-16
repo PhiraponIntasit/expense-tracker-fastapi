@@ -6,7 +6,7 @@ A multi-user income and expense tracker with a monthly summary dashboard.
 It is built with **FastAPI**, **PostgreSQL** and **SQLAlchemy 2.0**: a typed,
 tested JSON API with a lightweight server-rendered UI on top.
 
-**Live demo:** _add your Render URL here_. Click **Try the demo** to get a
+**Live demo:** <https://expense-tracker-71yc.onrender.com>. Click **Try the demo** to get a
 private account with a year of sample data, no sign-up needed. The free host
 sleeps when idle, so the first load can take about a minute.
 
