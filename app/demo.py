@@ -12,6 +12,11 @@ from app.models import Category, Transaction, User
 from app.sample_data import sample_transactions
 from app.security import hash_password
 
+# Nobody knows this password; demo accounts are only reachable through the
+# cookie set when they're created. Hashed once at startup because Argon2 is
+# deliberately slow, and hashing per demo would cost that on every click.
+UNUSABLE_PASSWORD_HASH = hash_password(secrets.token_urlsafe(32))
+
 
 class DemoCapacityError(Exception):
     """Too many live demo accounts; refuse instead of growing the database."""
@@ -24,7 +29,11 @@ def add_sample_data(db: Session, user: User, today: date, seed: int) -> int:
     )
     category_ids = {(kind, name): category_id for kind, name, category_id in categories}
     rows = sample_transactions(category_ids, today, seed)
-    db.execute(insert(Transaction), [{**row, "user_id": user.id} for row in rows])
+    # One multi-row INSERT (one round trip). Passing a list of dicts to
+    # execute() would let the ORM split rows into ~250 statements whenever a
+    # row's note is None or not, which made demo creation take seconds on a
+    # remote database.
+    db.execute(insert(Transaction).values([{**row, "user_id": user.id} for row in rows]))
     return len(rows)
 
 
@@ -47,9 +56,7 @@ def create_demo_user(db: Session) -> User:
     token = secrets.token_hex(6)
     user = User(
         email=f"demo-{token}@example.com",
-        # Nobody knows this password; demo accounts are only reachable through
-        # the cookie set when they're created.
-        password_hash=hash_password(secrets.token_urlsafe(32)),
+        password_hash=UNUSABLE_PASSWORD_HASH,
         is_demo=True,
     )
     db.add(user)
