@@ -1,0 +1,22 @@
+{# Shared by the login and register pages. #}
+<article class="auth-card">
+  <header>
+    <h1>{{ heading }}</h1>
+    <p class="muted">{{ subheading }}</p>
+  </header>
+  {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="{{ action }}">
+    <label>
+      Email
+      <input type="email" name="email" value="{{ email or '' }}" autocomplete="email" required autofocus>
+    </label>
+    <label>
+      Password
+      <input type="password" name="password" minlength="{{ 8 if action == '/register' else 1 }}" maxlength="128"
+             autocomplete="{{ 'new-password' if action == '/register' else 'current-password' }}" required>
+      {% if action == "/register" %}<small>At least 8 characters.</small>{% endif %}
+    </label>
+    <button type="submit">{{ submit }}</button>
+  </form>
+  <footer>{{ footer | safe }}</footer>
+</article>

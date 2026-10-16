@@ -47,14 +47,16 @@ categories
   id              bigint PK
   user_id         FK users ON DELETE CASCADE
   name            varchar(50)
-  type            enum('income','expense')
+  type            varchar(10) CHECK IN ('income','expense')
   created_at      timestamptz
-  UNIQUE (user_id, type, name)
+  UNIQUE (user_id, type, lower(name))
+  UNIQUE (id, user_id)            -- target of the composite FK below
 
 transactions
   id              bigint PK
   user_id         FK users ON DELETE CASCADE
-  category_id     FK categories ON DELETE RESTRICT
+  category_id     ┐ composite FK (category_id, user_id)
+                  ┘   → categories (id, user_id)
   amount          numeric(12,2) CHECK (amount > 0)
   occurred_on     date
   note            varchar(200) null
@@ -68,7 +70,11 @@ A transaction's type is always its category's type. To keep that consistent:
 - Deleting a category that still has transactions returns **409**. The user
   has to move those transactions to another category first.
 - Changing a category's `type` while it has transactions also returns **409**.
-- A transaction may only reference a category owned by the same user.
+- A transaction may only reference a category owned by the same user. The
+  composite foreign key enforces this in the database itself, not just in the
+  API. It uses `NO ACTION` rather than `RESTRICT` so that deleting a user
+  (for example, purging a demo account) can cascade through both tables in
+  one statement.
 
 ## API sketch
 
@@ -80,30 +86,93 @@ the row exists.
 POST   /api/auth/register            create account (+ default categories)
 POST   /api/auth/token               OAuth2 password form → bearer token, also sets cookie
 POST   /api/auth/logout              clear cookie
-POST   /api/auth/demo                create temporary demo account, set cookie
+POST   /api/auth/demo                create temporary demo account, set cookie (503 when full)
 GET    /api/users/me
 
 GET    /api/categories               ?type=
 POST   /api/categories
-PATCH  /api/categories/{id}
+GET    /api/categories/{id}
+PATCH  /api/categories/{id}             409 if retyping while in use
 DELETE /api/categories/{id}          409 if in use
 
 GET    /api/transactions             ?month=YYYY-MM&type=&category_id=&limit=&offset=
-                                     → {items, total, sum}
-POST   /api/transactions
-GET    /api/transactions/{id}
-PATCH  /api/transactions/{id}
+                                     → {items, total, income, expense}
+                                       (totals cover every page, not just this one)
+POST   /api/transactions             {category_id, amount, occurred_on, note?}
+GET    /api/transactions/{id}        → {..., category: {id, name, type}}
+PATCH  /api/transactions/{id}        note: null clears the note
 DELETE /api/transactions/{id}
-GET    /api/transactions/export.csv  same filters, streamed
+GET    /api/transactions/export.csv  same filters, no pagination
+```
 
-GET    /api/summary/monthly          ?from=YYYY-MM&to=YYYY-MM
+Amounts are JSON **strings** (`"1234.50"`) so that no client parses them as
+floats. Requests accept either strings or numbers.
+
+The list returns `income` and `expense` separately instead of a single `sum`.
+Adding the two together without a type filter would mean nothing.
+
+The CSV export starts with a UTF-8 BOM so that Excel shows Thai text
+correctly. Any cell beginning with `=`, `+`, `-` or `@` gets an apostrophe in
+front to block CSV formula injection. The export is built in memory rather
+than streamed: personal data is small, and building it in memory avoids
+reading from a DB session after the request's dependencies have closed.
+
+```
+GET    /api/summary/monthly          ?from=YYYY-MM&to=YYYY-MM  (inclusive, max 120 months)
                                      → [{month, income, expense, net}], zero-filled
 GET    /api/summary/by-category      ?month=YYYY-MM&type=expense
-                                     → [{category_id, name, total}] sorted desc
+                                     → [{category_id, name, total}] largest first,
+                                       categories with no transactions omitted
 ```
+
+If the months are left out, the summary endpoints default to the current
+month in UTC (the last 12 months for `monthly`). The web UI always sends
+explicit months computed in the browser's local time, so a user in Bangkok
+at 00:30 on the 1st already sees the new month.
+
+### Demo accounts
+
+`POST /api/auth/demo`, or the "Try the demo" button that posts to `/demo`,
+creates a separate account for each visitor:
+
+- **Data:** default categories plus about 1,000 generated transactions
+  covering the 12 months up to today (`app/sample_data.py`, deterministic per
+  seed). They follow a Bangkok office worker's rhythm: rent on the 1st,
+  salary on the 25th, a hot-season electricity spike, a Songkran trip, and
+  more shopping around 11.11 and year-end.
+- **Login:** the account's password is random and never shown, so the only
+  way in is the cookie set when the account is created.
+- **Expiry:** accounts older than `DEMO_MAX_AGE_HOURS` (24) are deleted, and
+  their data cascades with them. This runs at app startup and every time a new
+  demo account is created, because free hosting has no cron.
+- **Cap:** at most `DEMO_MAX_USERS` (500) demo accounts can exist at once.
+  Past that the endpoint returns 503 instead of letting the database grow
+  without bound.
+- **Banner:** demo users see a notice explaining the account is temporary,
+  and can still open the register page to create a real account.
+
+`make seed` uses the same generator to create a normal
+`demo@example.com` / `demo-password` account for local development.
 
 Web pages (Jinja2): `/login`, `/register`, `/` (dashboard), `/transactions`,
 `/categories`.
+
+- **Rendering:** login and register are plain HTML forms that work without
+  JS. The three app pages are server-rendered shells whose ES modules load
+  data from `/api` with the same-origin cookie. Pages accept the cookie only,
+  never a bearer header. User-provided text (category names, notes) reaches the
+  DOM through `textContent` only.
+- **Hardening:** a strict CSP covers every page (scripts from `'self'` only, no
+  inline scripts). Middleware rejects any `POST`/`PUT`/`PATCH`/`DELETE` whose
+  `Origin` header names another host, as CSRF defence on top of
+  `SameSite=Lax`. Pico.css and Chart.js are vendored under `app/static/vendor`,
+  so there are no CDN dependencies.
+- **Charts:** the palette was validated for colour-vision deficiency and
+  contrast in light and dark mode. Each chart has a "Show as table" view, the
+  selected month is shaded instead of recoloured, and charts are not animated.
+- **Stat tiles:** income and expenses compare with last month as a percentage.
+  Net compares as an amount, because a percentage change is meaningless when
+  net crosses zero.
 
 ## Testing priorities
 
@@ -121,8 +190,9 @@ Web pages (Jinja2): `/login`, `/register`, `/` (dashboard), `/transactions`,
    Docker Compose, Dockerfile, ruff/mypy, pytest with a transactional Postgres
    fixture, CI, and a `/healthz` endpoint that checks the database.
 2. **Users & auth:** user model, register, token/cookie login, logout, `me`.
-3. **Categories:** CRUD with default seeding and the in-use rules.
-4. **Transactions:** CRUD, filters, pagination, sum, and CSV export.
+3. **Categories:** CRUD with default seeding and the in-use rules. The
+   transactions table is created here too, since those rules depend on it.
+4. **Transactions:** API for CRUD, filters, pagination, sum, and CSV export.
 5. **Summary:** monthly and by-category endpoints.
 6. **Web UI:** Jinja2 + Pico.css pages and the Chart.js dashboard.
 7. **Demo:** sample data generator, demo endpoint, purge, `make seed`.

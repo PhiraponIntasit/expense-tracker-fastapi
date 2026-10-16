@@ -1,0 +1,19 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# The database lives on Neon (Render's free Postgres expires after 30 days),
+# so DATABASE_URL is entered by hand when the Blueprint is first applied.
+services:
+  - type: web
+    name: expense-tracker
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /healthz
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false

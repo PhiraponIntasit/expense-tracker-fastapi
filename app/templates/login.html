@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Log in · Expense Tracker{% endblock %}
+{% block content %}
+{% with heading="Log in", subheading="Track where your money goes, month by month.", action="/login", submit="Log in",
+        footer='No account yet? <a href="/register">Create one</a>' %}
+  {% include "_auth_form.html" %}
+{% endwith %}
+<article class="auth-card demo-card">
+  <p><strong>Just looking?</strong> Try it with a year of sample data. No sign-up needed.</p>
+  <form method="post" action="/demo">
+    <button type="submit" class="secondary">Try the demo</button>
+  </form>
+  <small class="muted">You get a private demo account that is deleted after 24 hours.</small>
+</article>
+{% endblock %}

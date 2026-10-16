@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Categories · Expense Tracker{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1>Categories</h1>
+</div>
+
+<p class="form-error" id="error" role="alert" hidden></p>
+
+<form class="toolbar" id="add-form" aria-label="Add category">
+  <input type="text" name="name" placeholder="New category name" maxlength="50" required aria-label="Name">
+  <select name="type" aria-label="Type">
+    <option value="expense">Expense</option>
+    <option value="income">Income</option>
+  </select>
+  <button type="submit">Add category</button>
+</form>
+
+<div class="category-columns">
+  <section>
+    <h2>Expenses</h2>
+    <div id="expense-list"></div>
+  </section>
+  <section>
+    <h2>Income</h2>
+    <div id="income-list"></div>
+  </section>
+</div>
+<p class="muted"><small>A category that still has transactions can be renamed but not deleted. Move its transactions to another category first.</small></p>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/categories.js"></script>
+{% endblock %}
