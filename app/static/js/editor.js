@@ -15,6 +15,7 @@ async function loadCategories() {
 }
 
 function fillCategories(type, selectedId) {
+  if (!categories) return; // still loading; openEditor fills it when ready
   const options = categories
     .filter((c) => c.type === type)
     .map((c) => new Option(c.name, c.id, false, c.id === selectedId));
@@ -32,20 +33,28 @@ export async function openEditor(transaction = null) {
   document.getElementById("editor-title").textContent = transaction
     ? "Edit transaction"
     : "Add transaction";
-  try {
-    await loadCategories();
-  } catch (error) {
-    showError(errorBox, error);
-  }
   const type = transaction?.category.type ?? "expense";
   form.querySelector(`input[name=type][value=${type}]`).checked = true;
   form.dataset.type = type;
-  fillCategories(type, transaction?.category.id);
   fields.occurred_on.value = transaction?.occurred_on ?? todayISO();
   fields.amount.value = transaction?.amount ?? "";
   fields.note.value = transaction?.note ?? "";
+  // Open straight away; categories fill in as soon as they arrive (usually
+  // already cached by the prefetch below).
   dialog.showModal();
   fields.amount.focus();
+  if (!categories) {
+    fields.category_id.replaceChildren(new Option("Loading…", ""));
+    fields.category_id.disabled = true;
+  }
+  try {
+    await loadCategories();
+    fillCategories(currentType(), transaction?.category.id);
+  } catch (error) {
+    showError(errorBox, error);
+  } finally {
+    fields.category_id.disabled = false;
+  }
 }
 
 form.addEventListener("change", (event) => {
@@ -102,3 +111,5 @@ window.addEventListener("categories:changed", () => {
 });
 
 if (new URLSearchParams(window.location.search).has("new")) openEditor();
+// Warm the category cache so the dialog's select is ready when it opens.
+else loadCategories().catch(() => {});
