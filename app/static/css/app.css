@@ -316,8 +316,11 @@ button.with-icon {
 }
 .content {
   padding: 2rem clamp(1rem, 3vw, 2.5rem) 3rem;
-  max-width: 1200px;
+  /* Wide enough for the 12-month chart, centred so very wide screens get
+     even margins instead of one empty band on the right. */
+  max-width: 1440px;
   width: 100%;
+  margin-inline: auto;
 }
 
 @media (max-width: 960px) {
