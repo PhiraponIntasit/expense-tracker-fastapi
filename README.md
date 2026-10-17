@@ -10,15 +10,24 @@ tested JSON API with a lightweight server-rendered UI on top.
 private account with a year of sample data, no sign-up needed. The free host
 sleeps when idle, so the first load can take about a minute.
 
-![Dashboard](docs/screenshots/dashboard.png)
+![Dashboard in light mode](docs/screenshots/dashboard.png)
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/dashboard-dark.png" alt="Dashboard in dark mode"></td>
-    <td><img src="docs/screenshots/transactions.png" alt="Transactions page"></td>
-    <td width="22%"><img src="docs/screenshots/mobile.png" alt="Dashboard on a phone"></td>
+    <td width="50%"><img src="docs/screenshots/dashboard-dark.png" alt="Dashboard in dark mode"><br><sub>Dark mode</sub></td>
+    <td width="50%"><img src="docs/screenshots/transactions.png" alt="Transactions grouped by day"><br><sub>Transactions, grouped by day</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/add-dialog.png" alt="Add transaction dialog"><br><sub>Quick add from any page</sub></td>
+    <td width="50%"><img src="docs/screenshots/login.png" alt="Login page with one-click demo"><br><sub>Login with a one-click demo</sub></td>
   </tr>
 </table>
+
+<p align="center">
+  <img src="docs/screenshots/mobile.png" alt="Dashboard on a phone, light mode" width="260">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-dark.png" alt="Dashboard on a phone, dark mode" width="260">
+</p>
 
 ## Features
 
