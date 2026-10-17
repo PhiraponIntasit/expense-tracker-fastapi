@@ -1308,3 +1308,16 @@ body > main.public,
 .auth-switch {
   margin-top: 1.75rem !important;
 }
+
+/* Paint the sidebar column behind the sticky sidebar too, so long pages (and
+   full-page screenshots) don't show the page background under it. */
+@media (min-width: 961px) {
+  .shell {
+    background: linear-gradient(
+      90deg,
+      var(--surface) 0 247px,
+      var(--border) 247px 248px,
+      var(--bg) 248px
+    );
+  }
+}
