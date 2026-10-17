@@ -144,5 +144,24 @@ def test_static_assets_are_served(client: TestClient) -> None:
         "/static/vendor/pico.min.css",
         "/static/vendor/chart.umd.min.js",
         "/static/js/dashboard.js",
+        "/static/js/theme.js",
+        "/static/js/editor.js",
     ):
         assert client.get(path).status_code == 200, path
+
+
+@pytest.mark.parametrize("path", APP_PAGES)
+def test_app_pages_offer_theme_toggle_and_add_dialog(client: TestClient, path: str) -> None:
+    register(client, "alice@example.com")
+    log_in_with_form(client, "alice@example.com")
+
+    html = client.get(path).text
+
+    assert "data-theme-toggle" in html
+    assert 'id="editor"' in html
+    assert "data-add-transaction" in html
+    assert '<script src="/static/js/theme.js"></script>' in html
+
+
+def test_login_page_has_theme_toggle(client: TestClient) -> None:
+    assert "data-theme-toggle" in client.get("/login").text

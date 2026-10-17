@@ -32,8 +32,12 @@ sleeps when idle, so the first load can take about a minute.
   remove. A category that still has transactions can't be deleted.
 - **Accounts:** email and password sign-up, plus a one-click demo account
   that deletes itself after 24 hours.
-- **Fits the device:** works on phones and follows the system's light or
-  dark mode.
+- **Quick entry anywhere:** an "Add transaction" dialog (or the **+** button
+  on phones) on every page, with an Expense/Income switch and a large amount
+  field.
+- **Fits the device:** a sidebar on desktop and a bottom tab bar on phones;
+  light and dark themes with a toggle that remembers your choice (it follows
+  the system setting until you pick one).
 
 ## Technical highlights
 

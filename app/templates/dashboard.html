@@ -1,39 +1,47 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon %}
 {% block title %}Dashboard · Expense Tracker{% endblock %}
 {% block content %}
-<div class="toolbar">
-  <button type="button" class="secondary outline icon-button" id="prev-month" aria-label="Previous month">‹</button>
-  <h1 id="month-title" aria-live="polite">&nbsp;</h1>
-  <button type="button" class="secondary outline icon-button" id="next-month" aria-label="Next month">›</button>
-  <span class="spacer"></span>
-  <a href="/transactions" role="button" id="transactions-link">Add transaction</a>
+<div class="page-head">
+  <div>
+    <h1>Overview</h1>
+    <p>Where your money came from and where it went.</p>
+  </div>
+  <div class="month-switch" role="group" aria-label="Month">
+    <button type="button" class="icon-button ghost" id="prev-month" aria-label="Previous month">{{ icon("chevron-left") }}</button>
+    <span class="label" id="month-title" aria-live="polite">&nbsp;</span>
+    <button type="button" class="icon-button ghost" id="next-month" aria-label="Next month">{{ icon("chevron-right") }}</button>
+  </div>
 </div>
 
 <p class="form-error" id="error" role="alert" hidden></p>
 
-<section class="tiles" id="tiles">
-  <article class="tile" data-kind="income">
-    <p class="tile-label">Income</p>
-    <p class="tile-value">–</p>
-    <p class="tile-delta"></p>
-  </article>
-  <article class="tile" data-kind="expense">
-    <p class="tile-label">Expenses</p>
-    <p class="tile-value">–</p>
-    <p class="tile-delta"></p>
-  </article>
-  <article class="tile" data-kind="net">
-    <p class="tile-label">Net</p>
-    <p class="tile-value">–</p>
-    <p class="tile-delta"></p>
-  </article>
+<section class="summary" id="tiles" aria-label="Month summary">
+  <div class="hero" data-kind="net">
+    <p class="hero-label">{{ icon("wallet") }} <span id="net-label">Net balance</span></p>
+    <p class="hero-value tile-value" id="net-value">–</p>
+    <div class="hero-meta">
+      <span class="chip" id="net-delta"></span>
+      <span class="chip" id="savings-rate" hidden></span>
+    </div>
+  </div>
+  <div class="card stat" data-kind="income">
+    <div class="stat-top"><span class="badge-icon income">{{ icon("income") }}</span>Income</div>
+    <p class="stat-value tile-value" id="income-value">–</p>
+    <p class="stat-delta" id="income-delta"></p>
+  </div>
+  <div class="card stat" data-kind="expense">
+    <div class="stat-top"><span class="badge-icon expense">{{ icon("expense") }}</span>Expenses</div>
+    <p class="stat-value tile-value" id="expense-value">–</p>
+    <p class="stat-delta" id="expense-delta"></p>
+  </div>
 </section>
 
-<article class="chart-card" id="monthly-card">
-  <header>
-    <h2>Income and expenses by month</h2>
-    <p class="muted">Click a month to see its breakdown.</p>
-  </header>
+<section class="card" id="monthly-card">
+  <div class="card-head">
+    <h2>Income vs expenses</h2>
+    <p class="muted">Last 12 months · tap a month for details</p>
+  </div>
   <div class="chart-box">
     <canvas id="monthly-chart" role="img" aria-label="Income, expenses and net for the last 12 months. The same data is available as a table below."></canvas>
   </div>
@@ -46,27 +54,41 @@
       </table>
     </div>
   </details>
-</article>
+</section>
 
-<article class="chart-card" id="breakdown-card">
-  <header>
-    <h2 id="breakdown-title">Expenses by category</h2>
-    <p class="muted" id="breakdown-subtitle">&nbsp;</p>
-  </header>
-  <div class="chart-box breakdown" id="breakdown-box">
-    <canvas id="breakdown-chart" role="img" aria-label="Expenses by category for the selected month. The same data is available as a table below."></canvas>
-  </div>
-  <p class="muted" id="breakdown-empty" hidden>No expenses recorded this month.</p>
-  <details>
-    <summary>Show as table</summary>
-    <div class="overflow-auto">
-      <table class="striped" id="breakdown-table">
-        <thead><tr><th>Category</th><th class="num">Amount</th><th class="num">Share</th></tr></thead>
-        <tbody></tbody>
-      </table>
+<div class="dash-grid">
+  <section class="card" id="breakdown-card">
+    <div class="card-head">
+      <h2 id="breakdown-title">Spending by category</h2>
+      <p class="muted" id="breakdown-subtitle">&nbsp;</p>
     </div>
-  </details>
-</article>
+    <div class="breakdown-box" id="breakdown-box">
+      <canvas id="breakdown-chart" role="img" aria-label="Expenses by category for the selected month. The same data is available as a table below."></canvas>
+    </div>
+    <div class="empty" id="breakdown-empty" hidden>{{ icon("chart") }}<p>No expenses recorded this month.</p></div>
+    <details>
+      <summary>Show as table</summary>
+      <div class="overflow-auto">
+        <table class="striped" id="breakdown-table">
+          <thead><tr><th>Category</th><th class="num">Amount</th><th class="num">Share</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+
+  <section class="card" id="recent-card">
+    <div class="card-head">
+      <h2>Recent transactions</h2>
+      <a href="/transactions" id="see-all">See all</a>
+    </div>
+    <ul class="tx-list" id="recent"></ul>
+    <div class="empty" id="recent-empty" hidden>
+      {{ icon("list") }}<p>Nothing recorded this month yet.</p>
+      <button type="button" class="outline with-icon" data-add-transaction>{{ icon("plus") }} Add a transaction</button>
+    </div>
+  </section>
+</div>
 {% endblock %}
 {% block scripts %}
 <script src="/static/vendor/chart.umd.min.js"></script>

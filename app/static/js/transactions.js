@@ -1,21 +1,11 @@
-import {
-  api,
-  currentMonth,
-  el,
-  formatBaht,
-  formatDay,
-  isMonth,
-  showError,
-  todayISO,
-} from "./common.js";
+import { api, currentMonth, el, formatBaht, formatDay, icon, isMonth, showError, toast } from "./common.js";
+import { openEditor } from "./editor.js";
+import { txRow } from "./tx.js";
 
 const PAGE_SIZE = 50;
 const $ = (id) => document.getElementById(id);
 const filtersForm = $("filters");
 const errorBox = $("error");
-const editor = $("editor");
-const editorForm = $("editor-form");
-const editorError = $("editor-error");
 
 const params = new URLSearchParams(window.location.search);
 const state = {
@@ -25,7 +15,6 @@ const state = {
   categoryId: /^\d+$/.test(params.get("category_id") ?? "") ? params.get("category_id") : "",
   offset: 0,
   categories: [],
-  editingId: null,
 };
 let latestRequest = 0;
 
@@ -37,26 +26,22 @@ function filterQuery() {
   return query;
 }
 
-// --- categories (filter + editor selects) --------------------------------------
+// --- category filter ---------------------------------------------------------------
 
-function categoryOptions(select, placeholder) {
-  const groups = ["expense", "income"].map((type) =>
+function renderCategoryFilter() {
+  const select = filtersForm.elements.category_id;
+  const types = state.type ? [state.type] : ["expense", "income"];
+  const groups = types.map((type) =>
     el(
       "optgroup",
       { label: type === "expense" ? "Expenses" : "Income" },
-      state.categories
-        .filter((c) => c.type === type)
-        .map((c) => el("option", { value: c.id }, c.name)),
+      state.categories.filter((c) => c.type === type).map((c) => el("option", { value: c.id }, c.name)),
     ),
   );
-  select.replaceChildren(...(placeholder ? [el("option", { value: "" }, placeholder)] : []), ...groups);
-}
-
-async function loadCategories() {
-  state.categories = await api("/api/categories");
-  categoryOptions(filtersForm.elements.category_id, "All categories");
-  categoryOptions(editorForm.elements.category_id, null);
-  filtersForm.elements.category_id.value = state.categoryId;
+  select.replaceChildren(el("option", { value: "" }, "All categories"), ...groups);
+  // Drop a selected category that the type filter just hid.
+  if (![...select.options].some((o) => o.value === state.categoryId)) state.categoryId = "";
+  select.value = state.categoryId;
 }
 
 // --- list ------------------------------------------------------------------------
@@ -79,13 +64,14 @@ async function loadTransactions() {
 }
 
 function renderPage(page) {
-  const count = `${page.total} ${page.total === 1 ? "transaction" : "transactions"}`;
-  const totals = [];
-  if (state.type !== "expense") totals.push(`income ${formatBaht(page.income)}`);
-  if (state.type !== "income") totals.push(`expenses ${formatBaht(page.expense)}`);
-  $("summary").textContent = `${count} · ${totals.join(" · ")}`;
+  const income = Number(page.income);
+  const expense = Number(page.expense);
+  $("count-label").textContent = `Net · ${page.total} ${page.total === 1 ? "transaction" : "transactions"}`;
+  $("total-net").textContent = formatBaht(income - expense);
+  $("total-income").textContent = state.type === "expense" ? "–" : formatBaht(income);
+  $("total-expense").textContent = state.type === "income" ? "–" : formatBaht(expense);
 
-  $("rows").replaceChildren(...page.items.map(renderRow));
+  $("rows").replaceChildren(...groupByDay(page.items));
   $("empty").hidden = page.items.length > 0;
 
   const first = page.total ? state.offset + 1 : 0;
@@ -95,26 +81,42 @@ function renderPage(page) {
   $("next-page").disabled = last >= page.total;
 }
 
-function renderRow(t) {
-  const income = t.category.type === "income";
+function groupByDay(items) {
+  const days = new Map();
+  for (const t of items) {
+    if (!days.has(t.occurred_on)) days.set(t.occurred_on, []);
+    days.get(t.occurred_on).push(t);
+  }
+  return [...days].map(([day, rows]) => {
+    const net = rows.reduce((sum, t) => sum + (t.category.type === "income" ? 1 : -1) * Number(t.amount), 0);
+    return el(
+      "section",
+      { className: "day-group" },
+      el(
+        "div",
+        { className: "day-head" },
+        el("span", {}, formatDay(day)),
+        el("span", {}, `${net >= 0 ? "+" : "−"}${formatBaht(Math.abs(net))}`),
+      ),
+      el("ul", { className: "tx-list" }, rows.map((t) => txRow(t, { showDate: false, actions: rowActions(t) }))),
+    );
+  });
+}
+
+function rowActions(t) {
+  const label = `${t.category.name} ${formatBaht(t.amount)} on ${formatDay(t.occurred_on)}`;
   return el(
-    "tr",
-    {},
-    el("td", { className: "date" }, formatDay(t.occurred_on)),
+    "div",
+    { className: "tx-actions" },
     el(
-      "td",
-      {},
-      t.category.name,
-      el("span", { className: "type-badge" }, income ? "income" : "expense"),
-      t.note ? el("small", { className: "note-inline muted" }, t.note) : null,
+      "button",
+      { type: "button", className: "icon-button ghost", "aria-label": `Edit ${label}`, title: "Edit", onclick: () => openEditor(t) },
+      icon("edit"),
     ),
-    el("td", { className: "col-note" }, t.note ?? ""),
-    el("td", { className: "num" }, `${income ? "+" : "−"}${formatBaht(t.amount)}`),
     el(
-      "td",
-      { className: "actions" },
-      el("button", { type: "button", className: "secondary outline", onclick: () => openEditor(t) }, "Edit"),
-      el("button", { type: "button", className: "secondary outline", onclick: () => remove(t) }, "Delete"),
+      "button",
+      { type: "button", className: "icon-button ghost", "aria-label": `Delete ${label}`, title: "Delete", onclick: () => remove(t) },
+      icon("trash"),
     ),
   );
 }
@@ -126,7 +128,8 @@ async function remove(t) {
   try {
     await api(`/api/transactions/${t.id}`, { method: "DELETE" });
     // Step back a page if this removed the last row on it.
-    if ($("rows").children.length === 1 && state.offset > 0) state.offset -= PAGE_SIZE;
+    if ($("rows").querySelectorAll(".tx").length === 1 && state.offset > 0) state.offset -= PAGE_SIZE;
+    toast("Transaction deleted");
     await loadTransactions();
   } catch (error) {
     showError(errorBox, error);
@@ -137,8 +140,10 @@ async function remove(t) {
 
 function syncFilterInputs() {
   filtersForm.elements.month.value = state.month;
-  filtersForm.elements.type.value = state.type;
-  filtersForm.elements.category_id.value = state.categoryId;
+  for (const pill of $("type-pills").querySelectorAll("button")) {
+    pill.setAttribute("aria-pressed", String(pill.dataset.type === state.type));
+  }
+  renderCategoryFilter();
   const query = filterQuery();
   $("export-link").href = `/api/transactions/export.csv${query.size ? `?${query}` : ""}`;
   // Keep "all time" bookmarkable as an explicit empty month.
@@ -147,18 +152,25 @@ function syncFilterInputs() {
 }
 
 function applyFilters() {
-  state.month = filtersForm.elements.month.value;
-  state.type = filtersForm.elements.type.value;
-  state.categoryId = filtersForm.elements.category_id.value;
   state.offset = 0;
   syncFilterInputs();
   loadTransactions();
 }
 
-filtersForm.addEventListener("change", applyFilters);
+filtersForm.addEventListener("change", () => {
+  state.month = filtersForm.elements.month.value;
+  state.categoryId = filtersForm.elements.category_id.value;
+  applyFilters();
+});
 filtersForm.addEventListener("submit", (event) => event.preventDefault());
+$("type-pills").addEventListener("click", (event) => {
+  const pill = event.target.closest("button[data-type]");
+  if (!pill) return;
+  state.type = pill.dataset.type;
+  applyFilters();
+});
 $("all-time").addEventListener("click", () => {
-  filtersForm.elements.month.value = "";
+  state.month = "";
   applyFilters();
 });
 $("prev-page").addEventListener("click", () => {
@@ -169,68 +181,19 @@ $("next-page").addEventListener("click", () => {
   state.offset += PAGE_SIZE;
   loadTransactions();
 });
-
-// --- add / edit dialog ---------------------------------------------------------------
-
-function openEditor(transaction = null) {
-  state.editingId = transaction?.id ?? null;
-  showError(editorError, null);
-  editorForm.reset();
-  $("editor-title").textContent = transaction ? "Edit transaction" : "Add transaction";
-  const fields = editorForm.elements;
-  if (transaction) {
-    fields.occurred_on.value = transaction.occurred_on;
-    fields.amount.value = transaction.amount;
-    fields.category_id.value = transaction.category.id;
-    fields.note.value = transaction.note ?? "";
-  } else {
-    fields.occurred_on.value = todayISO();
-    const firstExpense = state.categories.find((c) => c.type === "expense");
-    if (firstExpense) fields.category_id.value = firstExpense.id;
-  }
-  editor.showModal();
-  fields.amount.focus();
-}
-
-editorForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const fields = editorForm.elements;
-  const body = {
-    occurred_on: fields.occurred_on.value,
-    amount: fields.amount.value.trim(),
-    category_id: Number(fields.category_id.value),
-    note: fields.note.value.trim() || null,
-  };
-  const editing = state.editingId !== null;
-  try {
-    await api(editing ? `/api/transactions/${state.editingId}` : "/api/transactions", {
-      method: editing ? "PATCH" : "POST",
-      body,
-    });
-    editor.close();
-    await loadTransactions();
-  } catch (error) {
-    showError(editorError, error);
-  }
-});
-
-editor.querySelectorAll("[data-close]").forEach((button) =>
-  button.addEventListener("click", () => editor.close()),
-);
-$("add-button").addEventListener("click", () => openEditor());
+window.addEventListener("transactions:changed", loadTransactions);
 
 // --- start -------------------------------------------------------------------------
 
 async function start() {
   try {
-    await loadCategories();
+    state.categories = await api("/api/categories");
   } catch (error) {
     showError(errorBox, error);
     return;
   }
   syncFilterInputs();
   await loadTransactions();
-  if (params.has("new")) openEditor();
 }
 
 start();

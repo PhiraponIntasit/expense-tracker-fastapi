@@ -1,32 +1,44 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon %}
 {% block title %}Categories · Expense Tracker{% endblock %}
 {% block content %}
-<div class="toolbar">
-  <h1>Categories</h1>
+<div class="page-head">
+  <div>
+    <h1>Categories</h1>
+    <p>Group your money the way you think about it.</p>
+  </div>
 </div>
 
 <p class="form-error" id="error" role="alert" hidden></p>
 
-<form class="toolbar" id="add-form" aria-label="Add category">
-  <input type="text" name="name" placeholder="New category name" maxlength="50" required aria-label="Name">
-  <select name="type" aria-label="Type">
-    <option value="expense">Expense</option>
-    <option value="income">Income</option>
-  </select>
-  <button type="submit">Add category</button>
-</form>
+<section class="card spaced">
+  <form class="add-category" id="add-form" aria-label="Add category">
+    <input type="text" name="name" placeholder="New category, e.g. Pets" maxlength="50" required aria-label="Name">
+    <div class="pill-group" role="group" aria-label="Type" id="new-type">
+      <button type="button" data-type="expense" aria-pressed="true">Expense</button>
+      <button type="button" data-type="income" aria-pressed="false">Income</button>
+    </div>
+    <button type="submit" class="with-icon">{{ icon("plus") }} Add</button>
+  </form>
+</section>
 
 <div class="category-columns">
-  <section>
-    <h2>Expenses</h2>
+  <section class="card">
+    <div class="card-head">
+      <h2 class="card-title"><span class="badge-icon expense">{{ icon("expense") }}</span>Expenses</h2>
+      <span class="muted" id="expense-count"></span>
+    </div>
     <div id="expense-list"></div>
   </section>
-  <section>
-    <h2>Income</h2>
+  <section class="card">
+    <div class="card-head">
+      <h2 class="card-title"><span class="badge-icon income">{{ icon("income") }}</span>Income</h2>
+      <span class="muted" id="income-count"></span>
+    </div>
     <div id="income-list"></div>
   </section>
 </div>
-<p class="muted"><small>A category that still has transactions can be renamed but not deleted. Move its transactions to another category first.</small></p>
+<p class="muted hint"><small>Rename a category by editing its name and pressing Enter. A category that still has transactions can't be deleted; move its transactions to another category first.</small></p>
 {% endblock %}
 {% block scripts %}
 <script type="module" src="/static/js/categories.js"></script>

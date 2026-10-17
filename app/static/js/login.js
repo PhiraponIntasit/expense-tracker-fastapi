@@ -4,5 +4,5 @@ form?.addEventListener("submit", () => {
   const button = form.querySelector("button");
   button.disabled = true;
   button.setAttribute("aria-busy", "true");
-  button.textContent = "Preparing your demo…";
+  button.replaceChildren("Preparing your demo…");
 });

@@ -1,8 +1,17 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon %}
 {% block title %}Create account · Expense Tracker{% endblock %}
 {% block content %}
-{% with heading="Create an account", subheading="We'll set you up with a starter set of categories.", action="/register",
-        submit="Create account", footer='Already have an account? <a href="/login">Log in</a>' %}
-  {% include "_auth_form.html" %}
-{% endwith %}
+{% include "_auth_layout.html" %}
+<section class="auth-main">
+  <button type="button" class="icon-button ghost theme-corner" data-theme-toggle aria-label="Switch theme">
+    {{ icon("moon", "icon show-light") }}{{ icon("sun", "icon show-dark") }}
+  </button>
+  <div class="auth-card">
+    {% with heading="Create your account", subheading="We'll set you up with a starter set of categories.", action="/register", submit="Create account" %}
+      {% include "_auth_form.html" %}
+    {% endwith %}
+    <p class="auth-switch">Already have an account? <a href="/login">Log in</a></p>
+  </div>
+</section>
 {% endblock %}

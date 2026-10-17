@@ -2,51 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}Expense Tracker{% endblock %}</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <script src="/static/js/theme.js"></script>
   <link rel="stylesheet" href="/static/vendor/pico.min.css">
   <link rel="stylesheet" href="/static/css/app.css">
   {% block head %}{% endblock %}
 </head>
-<body>
-  <header class="container">
-    <nav>
-      <ul>
-        <li><a href="/" class="brand"><strong>฿ Expense Tracker</strong></a></li>
-      </ul>
-      {% if user %}
-      <ul class="nav-links">
-        <li><a href="/" {% if active == "dashboard" %}aria-current="page"{% endif %}>Dashboard</a></li>
-        <li><a href="/transactions" {% if active == "transactions" %}aria-current="page"{% endif %}>Transactions</a></li>
-        <li><a href="/categories" {% if active == "categories" %}aria-current="page"{% endif %}>Categories</a></li>
-        <li>
-          <details class="dropdown">
-            <summary>Account</summary>
-            <ul dir="rtl">
-              <li><span class="muted user-email">{{ user.email }}</span></li>
-              <li>
-                <form method="post" action="/logout">
-                  <button type="submit" class="secondary outline logout">Log out</button>
-                </form>
-              </li>
-            </ul>
-          </details>
-        </li>
-      </ul>
-      {% endif %}
+<body class="{{ 'is-app' if user else 'is-public' }}">
+{% include "_icons.html" %}
+{% from "_macros.html" import icon %}
+{% if user %}
+<div class="shell">
+  <aside class="sidebar" aria-label="Main">
+    <a href="/" class="logo"><span class="logo-mark" aria-hidden="true">฿</span><span>Expense Tracker</span></a>
+    <button type="button" class="add-button" data-add-transaction>{{ icon("plus") }}<span>Add transaction</span></button>
+    <nav class="side-nav">
+      <a href="/" {% if active == "dashboard" %}aria-current="page"{% endif %}>{{ icon("dashboard") }}<span>Dashboard</span></a>
+      <a href="/transactions" {% if active == "transactions" %}aria-current="page"{% endif %}>{{ icon("list") }}<span>Transactions</span></a>
+      <a href="/categories" {% if active == "categories" %}aria-current="page"{% endif %}>{{ icon("tag") }}<span>Categories</span></a>
     </nav>
+    <div class="sidebar-foot">
+      <button type="button" class="side-action" data-theme-toggle aria-label="Switch theme">
+        {{ icon("moon", "icon show-light") }}{{ icon("sun", "icon show-dark") }}<span data-theme-label>Dark mode</span>
+      </button>
+      <div class="account">
+        <span class="avatar" aria-hidden="true">{{ user.email[0] | upper }}</span>
+        <span class="account-email user-email" title="{{ user.email }}">{{ user.email }}</span>
+        <form method="post" action="/logout">
+          <button type="submit" class="icon-button ghost" aria-label="Log out" title="Log out">{{ icon("logout") }}</button>
+        </form>
+      </div>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <a href="/" class="logo"><span class="logo-mark" aria-hidden="true">฿</span><span>Expense Tracker</span></a>
+    <div class="topbar-actions">
+      <span class="avatar" aria-hidden="true" title="{{ user.email }}">{{ user.email[0] | upper }}</span>
+      <form method="post" action="/logout">
+        <button type="submit" class="icon-button ghost" aria-label="Log out">{{ icon("logout") }}</button>
+      </form>
+    </div>
   </header>
-  <main class="container">
-    {% if user and user.is_demo %}
+
+  <main class="content">
+    {% if user.is_demo %}
     <p class="demo-banner" role="status">
-      You're exploring a demo account with sample data. It will be deleted within 24 hours.
-      <a href="/register">Create your own account</a> to keep your data.
+      {{ icon("sparkles") }}
+      <span>You're exploring a demo account with sample data. It will be deleted within 24 hours.
+      <a href="/register">Create your own account</a> to keep your data.</span>
     </p>
     {% endif %}
+{% else %}
+  <main class="public">
+{% endif %}
     {% block content %}{% endblock %}
   </main>
+{% if user %}
+  <nav class="tabbar" aria-label="Main">
+    <a href="/" {% if active == "dashboard" %}aria-current="page"{% endif %}>{{ icon("dashboard") }}<span>Overview</span></a>
+    <a href="/transactions" {% if active == "transactions" %}aria-current="page"{% endif %}>{{ icon("list") }}<span>Transactions</span></a>
+    <button type="button" class="fab" data-add-transaction aria-label="Add transaction">{{ icon("plus") }}</button>
+    <a href="/categories" {% if active == "categories" %}aria-current="page"{% endif %}>{{ icon("tag") }}<span>Categories</span></a>
+    <button type="button" data-theme-toggle aria-label="Switch theme">
+      {{ icon("moon", "icon show-light") }}{{ icon("sun", "icon show-dark") }}<span data-theme-label>Dark mode</span>
+    </button>
+  </nav>
+</div>
+{% include "_editor.html" %}
+<script type="module" src="/static/js/editor.js"></script>
+{% endif %}
   {% block scripts %}{% endblock %}
 </body>
 </html>

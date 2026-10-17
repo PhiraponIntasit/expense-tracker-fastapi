@@ -129,3 +129,27 @@ export function showError(node, error) {
 export function cssVar(name, scope = document.documentElement) {
   return getComputedStyle(scope).getPropertyValue(name).trim();
 }
+
+// Brief confirmation in the corner, announced to screen readers.
+export function toast(message) {
+  let region = document.getElementById("toasts");
+  if (!region) {
+    region = el("div", { id: "toasts", className: "toasts", role: "status", "aria-live": "polite" });
+    document.body.append(region);
+  }
+  const item = el("div", { className: "toast" }, message);
+  region.append(item);
+  setTimeout(() => item.classList.add("leaving"), 2200);
+  setTimeout(() => item.remove(), 2600);
+}
+
+// SVG icon from the sprite in base.html.
+export function icon(name, className = "icon") {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", className);
+  svg.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", `#i-${name}`);
+  svg.append(use);
+  return svg;
+}
