@@ -170,6 +170,17 @@ Web pages (Jinja2): `/login`, `/register`, `/` (dashboard), `/transactions`,
 - **Charts:** the palette was validated for colour-vision deficiency and
   contrast in light and dark mode. Each chart has a "Show as table" view, the
   selected month is shaded instead of recoloured, and charts are not animated.
+- **Visual language:** income is green and marked with an inbound arrow and
+  `+`; expenses are coral-red with an outbound arrow and `−`, so meaning
+  never relies on colour alone. The green, red and net-blue trio passes the
+  colour-vision and contrast checks on both themes, and amount text uses
+  darker or lighter steps that clear 4.5:1.
+- **Themes:** `theme.js` runs in `<head>` before first paint and sets
+  `data-theme` from the saved choice (localStorage), falling back to the OS
+  setting. Charts rebuild on the `themechange` event.
+- **Layout:** a sidebar on desktop, and a top bar plus bottom tab bar with a
+  central **+** on phones. One shared add/edit dialog (`editor.js`) serves
+  every page, which refresh themselves on `transactions:changed`.
 - **Stat tiles:** income and expenses compare with last month as a percentage.
   Net compares as an amount, because a percentage change is meaningless when
   net crosses zero.

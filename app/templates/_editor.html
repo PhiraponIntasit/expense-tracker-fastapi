@@ -1,0 +1,36 @@
+{% from "_macros.html" import icon %}
+<dialog id="editor" aria-labelledby="editor-title">
+  <article class="editor">
+    <header class="editor-head">
+      <h2 id="editor-title">Add transaction</h2>
+      <button type="button" class="icon-button ghost" data-close aria-label="Close">{{ icon("x") }}</button>
+    </header>
+    <form id="editor-form" novalidate>
+      <p class="form-error" id="editor-error" role="alert" hidden></p>
+      <div class="segmented" role="radiogroup" aria-label="Type">
+        <label class="seg seg-expense"><input type="radio" name="type" value="expense" checked>{{ icon("expense") }}<span>Expense</span></label>
+        <label class="seg seg-income"><input type="radio" name="type" value="income">{{ icon("income") }}<span>Income</span></label>
+      </div>
+      <label class="amount-field">
+        <span>Amount</span>
+        <span class="amount-input">
+          <span class="currency" aria-hidden="true">฿</span>
+          <input type="text" name="amount" inputmode="decimal" autocomplete="off" placeholder="0.00"
+                 pattern="\d{1,10}(\.\d{1,2})?" required aria-describedby="amount-hint">
+        </span>
+        <small id="amount-hint" class="muted">Up to 2 decimal places</small>
+      </label>
+      <div class="field-row">
+        <label>Category <select name="category_id" required></select></label>
+        <label>Date <input type="date" name="occurred_on" required></label>
+      </div>
+      <label>Note <small class="muted">(optional)</small>
+        <input type="text" name="note" maxlength="200" placeholder="e.g. Lunch with team">
+      </label>
+      <footer class="editor-foot">
+        <button type="button" class="secondary outline" data-close>Cancel</button>
+        <button type="submit" id="editor-save">Save</button>
+      </footer>
+    </form>
+  </article>
+</dialog>

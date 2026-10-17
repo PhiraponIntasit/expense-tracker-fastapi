@@ -1,0 +1,19 @@
+{# Split layout for the login and register pages: brand panel + form. #}
+{% from "_macros.html" import icon %}
+<aside class="auth-aside">
+  <a href="/login" class="logo"><span class="logo-mark" aria-hidden="true">฿</span><span>Expense Tracker</span></a>
+  <div>
+    <h1>Know where every baht goes.</h1>
+    <p>Log income and expenses in seconds, then see each month at a glance: what came in, what went out, and what you kept.</p>
+    <ul class="feature-list">
+      <li>{{ icon("chart") }} Monthly charts and spending by category</li>
+      <li>{{ icon("download") }} Export to CSV that opens cleanly in Excel</li>
+      <li>{{ icon("shield") }} Your data stays private to your account</li>
+    </ul>
+  </div>
+  <div class="preview" aria-hidden="true">
+    <div class="preview-card"><small>{{ icon("income") }} Income</small><strong>฿42,000</strong></div>
+    <div class="preview-card"><small>{{ icon("expense") }} Expenses</small><strong>฿28,450</strong></div>
+    <div class="preview-bars"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</aside>

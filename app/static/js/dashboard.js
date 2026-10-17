@@ -10,13 +10,14 @@ import {
   isMonth,
   showError,
 } from "./common.js";
+import { txRow } from "./tx.js";
 
 const { Chart } = window;
 Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
 
 const $ = (id) => document.getElementById(id);
 const errorBox = $("error");
-const loadingTargets = [$("tiles"), $("monthly-card"), $("breakdown-card")];
+const loadingTargets = [$("tiles"), $("monthly-card"), $("breakdown-card"), $("recent-card")];
 
 const params = new URLSearchParams(window.location.search);
 const state = {
@@ -24,6 +25,7 @@ const state = {
   months: [], // the 12 months shown in the chart
   totals: new Map(), // month -> {income, expense, net}, includes the month before the chart
   breakdown: [],
+  recent: [],
 };
 const charts = { monthly: null, breakdown: null };
 let latestRequest = 0;
@@ -36,17 +38,18 @@ function windowEnd(selected) {
 }
 
 function theme() {
-  const card = $("monthly-card");
   return {
-    income: cssVar("--series-income"),
-    expense: cssVar("--series-expense"),
-    net: cssVar("--series-net"),
+    income: cssVar("--income"),
+    expense: cssVar("--expense"),
+    net: cssVar("--brand"),
     text: cssVar("--chart-text"),
-    muted: cssVar("--chart-muted"),
+    muted: cssVar("--chart-text"),
     grid: cssVar("--chart-grid"),
     axis: cssVar("--chart-axis"),
     band: cssVar("--chart-band"),
-    surface: cssVar("--pico-card-background-color", card),
+    surface: cssVar("--surface"),
+    tooltipBg: cssVar("--text"),
+    tooltipText: cssVar("--bg"),
   };
 }
 
@@ -59,14 +62,16 @@ async function load() {
   const end = windowEnd(state.month);
   try {
     // One extra month before the window so the first month still has a "vs last month".
-    const [monthly, breakdown] = await Promise.all([
+    const [monthly, breakdown, recent] = await Promise.all([
       api(`/api/summary/monthly?from=${addMonths(end, -12)}&to=${end}`),
       api(`/api/summary/by-category?month=${state.month}&type=expense`),
+      api(`/api/transactions?month=${state.month}&limit=6`),
     ]);
     if (request !== latestRequest) return; // a newer selection has superseded this one
     state.totals = new Map(monthly.map((m) => [m.month, m]));
     state.months = monthly.slice(1).map((m) => m.month);
     state.breakdown = breakdown;
+    state.recent = recent.items;
     render();
   } catch (error) {
     if (request === latestRequest) showError(errorBox, error);
@@ -91,10 +96,16 @@ function selectMonth(month) {
 function render() {
   if (!state.months.length) return; // nothing loaded yet
   $("month-title").textContent = formatMonth(state.month);
-  $("transactions-link").href = `/transactions?month=${state.month}&new=1`;
+  $("see-all").href = `/transactions?month=${state.month}`;
   renderTiles();
   renderMonthly();
   renderBreakdown();
+  renderRecent();
+}
+
+function renderRecent() {
+  $("recent").replaceChildren(...state.recent.map((t) => txRow(t)));
+  $("recent-empty").hidden = state.recent.length > 0;
 }
 
 function renderTiles() {
@@ -103,16 +114,32 @@ function renderTiles() {
   const previous = state.totals.get(previousMonth);
   const versus = `vs ${formatMonth(previousMonth, "short")}`;
 
-  for (const kind of ["income", "expense", "net"]) {
-    const tile = document.querySelector(`.tile[data-kind="${kind}"]`);
-    tile.querySelector(".tile-value").textContent = formatBaht(current[kind]);
-    const delta = tile.querySelector(".tile-delta");
-    delta.replaceChildren(...describeChange(kind, Number(current[kind]), Number(previous[kind]), versus));
+  $("net-label").textContent = `Net balance · ${formatMonth(state.month)}`;
+  $("net-value").textContent = formatBaht(current.net);
+  $("net-delta").replaceChildren(
+    ...describeChange("net", Number(current.net), Number(previous.net), versus),
+  );
+  for (const kind of ["income", "expense"]) {
+    $(`${kind}-value`).textContent = formatBaht(current[kind]);
+    $(`${kind}-delta`).replaceChildren(
+      ...describeChange(kind, Number(current[kind]), Number(previous[kind]), versus),
+    );
+  }
+
+  // Share of income kept this month: the one number most people care about.
+  const income = Number(current.income);
+  const rate = $("savings-rate");
+  rate.hidden = income <= 0;
+  if (income > 0) {
+    const saved = (Number(current.net) / income) * 100;
+    rate.textContent =
+      saved >= 0 ? `Saved ${saved.toFixed(0)}% of income` : `Overspent by ${Math.abs(saved).toFixed(0)}%`;
   }
 }
 
 // Income and expenses compare as a percentage. Net can cross zero, where a
-// percentage is meaningless, so it compares as an amount.
+// percentage is meaningless, so it compares as an amount. Direction is carried
+// by the arrow and sign as well as colour.
 function describeChange(kind, now, before, versus) {
   const change = now - before;
   if (Math.abs(change) < 0.005) return [`No change ${versus}`];
@@ -125,12 +152,10 @@ function describeChange(kind, now, before, versus) {
     kind === "net"
       ? `${sign}${formatBaht(Math.abs(change))}`
       : `${sign}${Math.abs((change / before) * 100).toFixed(0)}%`;
-  const arrow = el(
-    "span",
-    { className: `arrow ${good ? "good" : "bad"}`, "aria-hidden": "true" },
-    change > 0 ? "▲" : "▼",
-  );
-  return [arrow, `${amount} ${versus}`];
+  const arrow = change > 0 ? "▲" : "▼";
+  // The net figure sits on the coloured hero card, so it keeps white text.
+  const className = kind === "net" ? "" : good ? "delta-good" : "delta-bad";
+  return [el("span", { className }, `${arrow} ${amount}`), ` ${versus}`];
 }
 
 // Shades the selected month's column so it stays visible while the bars keep
@@ -169,7 +194,7 @@ function renderMonthly() {
   const rows = state.months.map((m) => state.totals.get(m));
   const labels = state.months.map((m) => formatMonth(m, "short"));
   const selectedIndex = state.months.indexOf(state.month);
-  const bar = { type: "bar", maxBarThickness: 24, borderRadius: 4, borderSkipped: "start", order: 1 };
+  const bar = { type: "bar", maxBarThickness: 18, borderRadius: 6, borderSkipped: "start", order: 1 };
 
   const data = {
     labels,
@@ -230,10 +255,15 @@ function renderMonthly() {
           legend: {
             position: "top",
             align: "start",
-            labels: { color: t.text, usePointStyle: true, generateLabels: legendLabels },
+            labels: { color: t.text, usePointStyle: true, boxHeight: 8, generateLabels: legendLabels },
           },
           tooltip: {
             usePointStyle: true,
+            backgroundColor: t.tooltipBg,
+            titleColor: t.tooltipText,
+            bodyColor: t.tooltipText,
+            padding: 10,
+            cornerRadius: 10,
             itemSort: (a, b) => a.datasetIndex - b.datasetIndex,
             callbacks: {
               title: (items) => formatMonth(state.months[items[0].dataIndex]),
@@ -305,10 +335,10 @@ function renderBreakdown() {
   const total = items.reduce((sum, item) => sum + Number(item.total), 0);
   const monthName = formatMonth(state.month);
 
-  $("breakdown-title").textContent = `Expenses by category · ${monthName}`;
+  $("breakdown-title").textContent = "Spending by category";
   $("breakdown-subtitle").textContent = items.length
-    ? `${formatBaht(total)} across ${items.length} ${items.length === 1 ? "category" : "categories"}`
-    : " ";
+    ? `${monthName} · ${formatBaht(total)}`
+    : monthName;
   $("breakdown-empty").hidden = items.length > 0;
   $("breakdown-box").hidden = items.length === 0;
 
@@ -330,7 +360,7 @@ function renderBreakdown() {
   if (!items.length) return;
 
   // Height follows the number of categories so bars never get squeezed.
-  $("breakdown-box").style.height = `${items.length * 36 + 32}px`;
+  $("breakdown-box").style.height = `${items.length * 34 + 32}px`;
   charts.breakdown = new Chart($("breakdown-chart"), {
     type: "bar",
     data: {
@@ -340,8 +370,8 @@ function renderBreakdown() {
           label: "Expenses",
           data: items.map((item) => Number(item.total)),
           backgroundColor: t.expense,
-          maxBarThickness: 24,
-          borderRadius: 4,
+          maxBarThickness: 18,
+          borderRadius: 6,
           borderSkipped: "start",
         },
       ],
@@ -369,6 +399,11 @@ function renderBreakdown() {
       plugins: {
         legend: { display: false },
         tooltip: {
+          backgroundColor: t.tooltipBg,
+          titleColor: t.tooltipText,
+          bodyColor: t.tooltipText,
+          padding: 10,
+          cornerRadius: 10,
           callbacks: {
             label: (item) => `${formatBaht(item.raw)} · ${((item.raw / total) * 100).toFixed(1)}%`,
           },
@@ -384,11 +419,12 @@ function renderBreakdown() {
 $("prev-month").addEventListener("click", () => selectMonth(addMonths(state.month, -1)));
 $("next-month").addEventListener("click", () => selectMonth(addMonths(state.month, 1)));
 
-// Dark mode uses its own validated colors, so rebuild the charts when it changes.
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+// Each theme has its own validated colours, so rebuild the charts when it changes.
+window.addEventListener("themechange", () => {
   charts.monthly?.destroy();
   charts.monthly = null;
   render();
 });
+window.addEventListener("transactions:changed", load);
 
 load();

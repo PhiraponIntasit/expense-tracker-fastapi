@@ -1,17 +1,26 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon %}
 {% block title %}Log in · Expense Tracker{% endblock %}
 {% block content %}
-{% with heading="Log in", subheading="Track where your money goes, month by month.", action="/login", submit="Log in",
-        footer='No account yet? <a href="/register">Create one</a>' %}
-  {% include "_auth_form.html" %}
-{% endwith %}
-<article class="auth-card demo-card">
-  <p><strong>Just looking?</strong> Try it with a year of sample data. No sign-up needed.</p>
-  <form method="post" action="/demo" id="demo-form">
-    <button type="submit" class="secondary">Try the demo</button>
-  </form>
-  <small class="muted">You get a private demo account that is deleted after 24 hours.</small>
-</article>
+{% include "_auth_layout.html" %}
+<section class="auth-main">
+  <button type="button" class="icon-button ghost theme-corner" data-theme-toggle aria-label="Switch theme">
+    {{ icon("moon", "icon show-light") }}{{ icon("sun", "icon show-dark") }}
+  </button>
+  <div class="auth-card">
+    {% with heading="Welcome back", subheading="Log in to see your money at a glance.", action="/login", submit="Log in" %}
+      {% include "_auth_form.html" %}
+    {% endwith %}
+    <div class="divider">or</div>
+    <div class="demo-card">
+      <form method="post" action="/demo" id="demo-form">
+        <button type="submit" class="secondary outline">{{ icon("sparkles") }} Try the demo</button>
+      </form>
+      <small>A year of sample data, no sign-up. Deleted after 24 hours.</small>
+    </div>
+    <p class="auth-switch">No account yet? <a href="/register">Create one</a></p>
+  </div>
+</section>
 {% endblock %}
 {% block scripts %}
 <script type="module" src="/static/js/login.js"></script>
